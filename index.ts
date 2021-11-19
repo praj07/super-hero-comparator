@@ -1,95 +1,109 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import axios from 'axios';
 import _ from 'lodash';
-const superheroApiUrl = process.env.SUPERHERO_API_URL
+import { stylizeSingleHeroFound, stylizeNoHeroesFound, stylizeResponseBothHeros } from './methods/stylizations';
 
-exports.handler = async (event: any) => {
-// const main = async (event: any) => {
+import { getSuperHeroData  } from './methods/SuperHero';
+
+
+// exports.handler = async (event: any) => {
+const main = async (event: any) => {
 
     // first thing, get the two superheros who are competing
-    const firstHeroName = event['queryStringParameters']['firstHeroName'];
-    const secondHeroName = event['queryStringParameters']['secondHeroName'];
+    const firstHeroData = await getSuperHeroData(event['queryStringParameters']['firstHeroName'])
+    const secondHeroData =await getSuperHeroData(event['queryStringParameters']['secondHeroName']);
 
     // TODO: definitely type the Axios response
-    const firstHeroResults: any = await getHeroData(firstHeroName);
     const secondHeroResults: any = await getHeroData(secondHeroName);
  
-    let firstHeroData: any = firstHeroResults.data.results ? firstHeroResults.data.results[0] : undefined
     let secondHeroData: any = secondHeroResults.data.results? secondHeroResults.data.results[0] : undefined
 
+    // The stylized response from block kit
+    let responseBlockKit = {};
     if (!_.isUndefined(firstHeroData) && !_.isUndefined(secondHeroData)) {
          // if both exist, deathmatch
         const firstHeroPowerStats = firstHeroData.powerstats;
         const firstHeroFoundName = firstHeroData.name;
-        const firstHeroRealName = firstHeroData.biography['full-name']
-        const firstHeroProfile = firstHeroData.image.url;
 
         const secondHeroPowerStats = secondHeroData.powerstats;
         const secondHeroFoundName = secondHeroData.name;
-        const secondHeroRealName = secondHeroData.biography['full-name']
-        const secondHeroProfile = secondHeroData.image.url;
-
-        const comparison = comparePowerStats({
-            heroName: firstHeroFoundName,
-            powerstats: firstHeroPowerStats
+        
+        const { winnerMap, runningCount } = comparePowerStats({
+            powerstats: firstHeroPowerStats,
+            heroName: firstHeroFoundName
         }, {
-            heroName: secondHeroFoundName,
-            powerstats: secondHeroPowerStats
+            powerstats: secondHeroPowerStats,
+            heroName: secondHeroFoundName    
         });
 
-        console.log(comparison)
+        console.log(winnerMap)
+        
+        responseBlockKit = stylizeResponseBothHeros(firstHeroData, secondHeroData, winnerMap, runningCount);
     } else if (_.isUndefined(firstHeroData) && _.isUndefined(secondHeroData)){
         // if both don't exist, fizzle,
-        console.log(`We didn't find either hero, please check for a typo`)
+        responseBlockKit = stylizeNoHeroesFound(firstHeroName, secondHeroName);
     } else {
         // if one exists but not the other, that hero wins
-        const existingHeroName = !_.isUndefined(firstHeroData) ? firstHeroData.name : secondHeroData.name
-        console.log(`we only found ${existingHeroName}, so they win!`)
-    }
-    
+        const existingHero = !_.isUndefined(firstHeroData) ? firstHeroData : secondHeroData
 
+        responseBlockKit = stylizeSingleHeroFound(existingHero);
+    }
+    await axios({
+        method: 'POST',
+        url: process.env.SLACK_URL,
+        data: responseBlockKit,
+        headers: {
+           'Content-Type': 'application/json',
+        } 
+    }) 
 };
 
-async function getHeroData(heroName: string): Promise<any> {
-    return await axios({
-        method: 'GET',
-        url: `${superheroApiUrl}/search/${heroName}`,
-    });
-}
 
+
+/**
+ * creates a comparison map to find which hero wins in all specific power stat categories
+ * @param firstHeroData 
+ * @param secondHeroData 
+ * @returns 
+ */
 function comparePowerStats(firstHeroData: any, secondHeroData: any) {
-    const winnerTable: {
+    const winnerMap: {
         [powerStat: string]: string
-    } = {}
+    } = {};
+    let runningCount = 0;
     for (const stat in firstHeroData.powerstats) {
-        if (firstHeroData.powerstats[stat] === secondHeroData.powerstats[stat]) {
-            winnerTable[stat] = 'tie'
+        const firstHeroStat = parseInt(firstHeroData.powerstats[stat]);
+        const secondHeroStat = parseInt(secondHeroData.powerstats[stat]);
+        // we'll use this to keep track of which hero wins more of the stats
+        // -ve means hero 2 wins, +ve means hero 1 wins
+        console.log(stat, 'first: ', firstHeroStat, '     second: ', secondHeroStat)
+        if (firstHeroStat === secondHeroStat) {
+            winnerMap[stat] = 'tie'
         } else {
-            winnerTable[stat] = firstHeroData.powerstats[stat] > secondHeroData.powerstats[stat] ? firstHeroData.heroName : secondHeroData.heroName
+            if (firstHeroStat > secondHeroStat ) {
+                winnerMap[stat] = firstHeroData.heroName;
+                runningCount++;
+            } else {
+                winnerMap[stat] = secondHeroData.heroName;
+                runningCount--;
+            }
         }
     };
-    return winnerTable
+    return {
+        winnerMap,
+        runningCount
+    }
+
 }
 
 // For Testing
-/*
 main({
     queryStringParameters: {
-        firstHeroName: 'spider-man',
-        secondHeroName: 'superman'
+        firstHeroName: 'abraxas',
+        secondHeroName: 'abomination'
     },
 });
- */
 
-type Powerstats = {
-    intelligence: number,
-    strength: number,
-    speed: number,
-    durability: number,
-    power: number,
-    combat: number
-};
 
 
