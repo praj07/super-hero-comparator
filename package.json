@@ -1,0 +1,29 @@
+{
+  "name": "super-hero-comparator",
+  "version": "1.0.0",
+  "description": "a simple endpoint for comparing two superheros",
+  "main": "build/index.js",
+  "scripts": {
+    "test": "test",
+    "start": "tsc && node build/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/praj07/super-hero-comparator.git"
+  },
+  "author": "Paavan Raj",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/praj07/super-hero-comparator/issues"
+  },
+  "homepage": "https://github.com/praj07/super-hero-comparator#readme",
+  "dependencies": {
+    "axios": "^0.24.0",
+    "dotenv": "^10.0.0",
+    "lodash": "^4.17.21",
+    "typescript": "^4.5.2"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.14.177"
+  }
+}
