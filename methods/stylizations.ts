@@ -88,7 +88,7 @@ export function stylizeResponseBothHeros(firstHeroData: any, secondHeroData: any
                     "type": "mrkdwn",
                     "text": runningCount === 0 ? 
                         `*${firstHeroData.name}* and *${secondHeroData.name}* are equally matched!` :
-                        `*${winner}* wins in ${winningFields.length} stats (${winningFields.join(', ')}) thus they are the better hero`
+                        `*${winner}* wins in ${winningFields.length} stats (${winningFields.join(', ')}), thus they are the better hero`
                 }
             }
         ]
