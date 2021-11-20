@@ -105,3 +105,6 @@ dist
 
 # build file
 build
+
+#lambda deployments
+function.zip

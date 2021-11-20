@@ -8,16 +8,74 @@ import { stylizeSingleHeroFound, stylizeNoHeroesFound, stylizeResponseBothHeros 
 import { getSuperHeroData, comparePowerStats } from './methods/SuperHero';
 
 
-exports.handler = async (event: any) => {
-// const main = async (event: any) => { // for testing
+exports.handler = async (event: any, context: any, callback: any) => {
+
+
+    /******* Structure of Event Data coming from API Gateway ********/
+    /*
+    event = {
+        ...
+        "body": {
+            "challenge": "xxxx",
+            "token": "ZZZZZZWSxiZZZ2yIvs3peJ",
+            "team_id": "T061EG9R6",
+            "api_app_id": "A0MDYCDME",
+            "event": {
+                "type": "app_mention",
+                "user": "W021FGA1Z",
+                "text": "<@U0LAN0Z89> Superman vs Batman",
+                "ts": "1515449483.000108",
+                "channel": "C0LAN2Q65",
+                "event_ts": "1515449483000108"
+            },
+            "type": "event_callback",
+            "event_id": "Ev0MDYHUEL",
+            "event_time": 1515449483000108,
+            "authed_users": [
+                "U0LAN0Z89"
+            ]
+        },
+        "resource": "/{proxy+}",
+       ...
+    }
+    */
+
+    const eventObject = typeof event === 'string' ? JSON.parse(event) : event;
+
+    const bodyObject = typeof eventObject.body === 'string' ? JSON.parse(eventObject.body) : eventObject.body
+    // handle challenge if its ever called
+
+    const challenge = bodyObject["challenge"];
+    if (!_.isUndefined(challenge)) {
+        callback(null,
+        {
+            statusCode: 200, 
+            body: JSON.stringify({
+                challenge
+            })
+        });
+        return;
+    }
 
     // first thing, get the two superheros who are competing
-    const firstHeroQuery = event['queryStringParameters']['firstHeroName']
-    const secondHeroQuery = event['queryStringParameters']['secondHeroName']
+
+    // SAMPLE data from slack
+    // {
+    //     "type": "app_mention",
+    //     "user": "U061F7AUR",
+    //     "text": "<@raj> batman v spiderman",
+    //     "ts": "1515449522.000016",
+    //     "channel": "C0LAN2Q65",
+    //     "event_ts": "1515449522000016"
+    // }
+    const messageToParse: string[] = bodyObject.event["text"].split(' ');
+
+    const firstHeroQuery = messageToParse[1];
+    const secondHeroQuery = messageToParse[3];
 
 
     const firstHeroData = await getSuperHeroData(firstHeroQuery)
-    const secondHeroData =await getSuperHeroData(secondHeroQuery);
+    const secondHeroData = await getSuperHeroData(secondHeroQuery);
 
     // The stylized response from block kit
     let responseBlockKit = {};
@@ -55,15 +113,26 @@ exports.handler = async (event: any) => {
         headers: {
            'Content-Type': 'application/json',
         } 
-    }) 
+    });
+
+    callback(null,
+        {
+            statusCode: 200, 
+            body: JSON.stringify({
+                isSuccess: true
+            })
+        }
+    );
+    return
 };
 
-// For Testing
-// main({
-//     queryStringParameters: {
-//         firstHeroName: 'abraxas',
-//         secondHeroName: 'abomination'
-//     },
+// // For Testing
+// exports.handler(JSON.stringify({
+//     body: {
+//         text: '@raj cyborg vs superman'
+//     }
+// }), null , (a: any, b: any) => {
+//     console.log(b)
 // });
 
 
